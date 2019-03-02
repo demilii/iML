@@ -3,7 +3,7 @@ let pipes = [];
 let state = 0;
 let over = false;
 let start = false;
-
+let trainComplete = false;
 let mobilenet;
 let classifier;
 let video;
@@ -11,6 +11,7 @@ let label = 'test';
 let normalButton;
 let upButton;
 let trainButton;
+let count = 0;
 
 function modelReady() {
   console.log('Model is ready!!!');
@@ -20,6 +21,24 @@ function videoReady() {
   console.log('Video is ready!!!');
 }
 
+function whileTraining(loss) {
+  if (loss == null) {
+    console.log('Training Complete');
+    trainComplete = true;
+    classifier.classify(gotResults);
+  } else {
+  }
+}
+
+function gotResults(error,result){
+  if(error){
+    console.error(error);
+  }else{
+    label = result;
+    classifier.classify(gotResults);
+  }
+}
+
 function setup() {
   createCanvas(windowWidth, windowHeight);
   video = createCapture(VIDEO);
@@ -27,6 +46,29 @@ function setup() {
   background(0);
   mobilenet = ml5.featureExtractor('MobileNet', modelReady);
   classifier = mobilenet.classification(video, videoReady);
+
+  normalButton = createButton('Normal');
+  normalButton.position(20,20)
+              .size(130,30);
+
+  normalButton.mousePressed(function(){
+    classifier.addImage('normal');
+  });
+
+  upButton = createButton('Up');
+  upButton.position(20,70)
+          .size(130,30);
+  upButton.mousePressed(function(){
+    classifier.addImage('up');
+  });
+
+  trainButton = createButton('Train');
+  trainButton.position(20,120)
+             .size(130,30);
+  trainButton.mousePressed(function(){
+    classifier.train(whileTraining);
+  });
+
   bird = new Bird();
   pipes.push(new Pipe());
 }
@@ -35,6 +77,7 @@ function draw(){
   // start();
   measure_state();
   check_state();
+  // console.log(label);
 }
 
 function windowResized() {
@@ -43,14 +86,12 @@ function windowResized() {
 
 
 function keyPressed(){
-  if(key = ' '){
+  if(keyCode === UP_ARROW && trainComplete){
     bird.up();
   }
-  if(key = 's'){
+  if(keyCode === DOWN_ARROW && trainComplete){
     start = true;
     over = false;
-    console.log(start);
-    console.log(state);
   }
 }
 
@@ -58,12 +99,22 @@ function keyPressed(){
 function check_state(){
   if (state == 0){
     //train the model
+    image(video, 0, 0, windowWidth,windowHeight);
   }else if(state == 1){
     //start the game
     background(0);
     bird.update();
     bird.show();
-    if(frameCount % 300 == 0){
+    if(label === 'up'){
+      count++;
+      if(count < 4){
+        bird.up();
+      }
+
+    }else{
+      count = 0;
+    }
+    if(frameCount % 400 == 0){
       pipes.push(new Pipe());
     }
     for(var i = 0; i <pipes.length;i++ ){
@@ -75,7 +126,7 @@ function check_state(){
 
       if(pipes[i].hit(bird)){
         // game over
-        pipes.slice(i,1）;
+        pipes.slice(i,1);
         over = true;
         start = false;
       }
@@ -108,15 +159,15 @@ function measure_state(){
 function Bird(){
   this.y = height/2;
   this.x = 25;
-
+  this.r = 40;
 
   this.gravity = 0.5;
   this.velocity = 0;
-  this.lift = -15;
+  this.lift = -12;
 
   this.show = function(){
     fill(255);
-    ellipse(this.x,this.y,32,32);
+    ellipse(this.x,this.y,this.r,this.r);
   }
   this.update = function(){
     this.velocity += this.gravity;
@@ -138,8 +189,6 @@ function Bird(){
   this.up = function(){
     this.velocity += this.lift;
   }
-
-
 }
 
 
@@ -151,7 +200,7 @@ function Pipe(){
   this.speed = 1.5;
 
   this.hit = function(bird){
-    if(bird.y-16< this.top || bird.y+16 > height- this.bottom){
+    if(bird.y-bird.r< this.top || bird.y+bird.r > height- this.bottom){
       if(bird.x > this.x && bird.x < this.x + this.w){
         fill(255,0,0);
         return true;
